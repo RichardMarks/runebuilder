@@ -32,6 +32,8 @@ function create() {
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  drawGrid(ctx);
+
   const renderBtn = document.createElement('button');
   renderBtn.style.boxSizing = 'border-box';
   renderBtn.style.width = '200px';
@@ -50,7 +52,7 @@ function create() {
   const clearOnRenderCheckbox = document.createElement('input');
   clearOnRenderCheckbox.type = 'checkbox';
 
-  clearOnRenderLabel.innerText = 'Clear On Render';
+  clearOnRenderLabel.innerText = 'Clear Canvas On Render';
   clearOnRenderLabel.style.marginLeft = '4px';
   clearOnRenderLabel.htmlFor = 'cor';
   clearOnRenderCheckbox.id = 'cor';
@@ -83,12 +85,28 @@ function create() {
   midContainer.style.display = 'flex';
   // midContainer.style.justifyContent = 'space-between';
 
-  const historyContainer = document.createElement('div');
-  historyContainer.style.marginLeft = '24px';
-  historyContainer.style.flex = 1;
+  const clearHistoryBtn = document.createElement('button');
+  clearHistoryBtn.style.width = '200px';
+  clearHistoryBtn.style.height = '48px';
+  clearHistoryBtn.style.marginBottom = '24px';
+  clearHistoryBtn.innerText = 'Clear History';
 
-  midContainer.appendChild(canvas);
-  midContainer.appendChild(historyContainer);
+  const historyRootContainer = document.createElement('div');
+  historyRootContainer.style.marginLeft = '24px';
+
+  const historyContainer = document.createElement('div');
+  historyContainer.style.flex = 1;
+  historyContainer.style.maxHeight = '512px';
+
+  historyRootContainer.appendChild(clearHistoryBtn);
+  historyRootContainer.appendChild(historyContainer);
+
+  const canvasContainer = document.createElement('div');
+
+  canvasContainer.appendChild(canvas);
+
+  midContainer.appendChild(canvasContainer);
+  midContainer.appendChild(historyRootContainer);
 
   document.body.appendChild(phraseContainer);
   document.body.appendChild(midContainer);
@@ -180,6 +198,15 @@ function create() {
     }
   };
 
+  const clearHistoryInLS = () => {
+    try {
+      window.localStorage.removeItem('runebuilderhistory');
+      return true;
+    } catch (err) {
+      return null;
+    }
+  };
+
   const addToHistory = (state) => {
     historyState.push({ ...state });
     saveHistoryToLS();
@@ -192,13 +219,15 @@ function create() {
       return;
     }
     const text = phraseTxt.value;
-    phraseTxt.value = '';
+    // phraseTxt.value = '';
     if (clearOnRenderCheckbox.checked) {
       ctx.fillStyle = '#fff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
     const rotations = rotCountNum.valueAsNumber;
     const state = { time: new Date().getTime(), text, rotations };
+
+    drawGrid(ctx);
 
     render(reduce(text, rotations), ctx);
     if (!isHistorialPlayback) {
@@ -224,7 +253,38 @@ function create() {
     false
   );
 
+  clearHistoryBtn.addEventListener(
+    'click',
+    () => {
+      clearHistoryInLS();
+      historyState.length = 0;
+      refreshHistory();
+    },
+    false
+  );
+
   loadHistoryFromLS();
+}
+
+function drawGrid(ctx) {
+  return;
+  const cellWidth = ctx.canvas.width / 5;
+  const cellHeight = ctx.canvas.height / 5;
+
+  ctx.fillStyle = '#ddd';
+  for (let y = 0; y < 5; y++) {
+    const py = y * cellHeight + cellHeight * 0.5;
+    for (let x = 0; x < 5; x++) {
+      const px = x * cellWidth + cellWidth * 0.5;
+      if (x > 0 && x < 4 && y > 0 && y < 4) {
+        ctx.fillStyle = '#444';
+        ctx.fillRect(px, py, 2, 2);
+      } else {
+        ctx.fillStyle = '#ccc';
+        ctx.fillRect(px, py, 2, 2);
+      }
+    }
+  }
 }
 
 function render(indices, ctx) {
