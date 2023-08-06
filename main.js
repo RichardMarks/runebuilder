@@ -11,11 +11,181 @@ function create() {
 
   const ctx = canvas.getContext('2d');
 
-  document.body.appendChild(canvas);
+  document.body.style.boxSizing = 'border-box';
+  document.body.style.margin = 0;
+  document.body.style.padding = '24px';
+
+  const phraseContainer = document.createElement('div');
+  phraseContainer.style.boxSizing = 'border-box';
+  phraseContainer.style.display = 'flex';
+
+  const phraseTxt = document.createElement('input');
+  phraseTxt.style.flex = 1;
+  phraseTxt.style.boxSizing = 'border-box';
+  phraseTxt.style.display = 'block';
+  phraseTxt.style.marginRight = '24px';
+  phraseTxt.style.height = '48px';
+  phraseTxt.style.fontSize = '24px';
+  phraseTxt.placeholder = 'Enter Phrase';
+  phraseContainer.appendChild(phraseTxt);
 
   ctx.fillStyle = '#fff';
-
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const renderBtn = document.createElement('button');
+  renderBtn.style.boxSizing = 'border-box';
+  renderBtn.style.width = '200px';
+  renderBtn.style.height = '48px';
+  renderBtn.style.marginBottom = '24px';
+  renderBtn.innerText = 'Render';
+  phraseContainer.appendChild(renderBtn);
+
+  const optionsContainer = document.createElement('div');
+  optionsContainer.style.boxSizing = 'border-box';
+  optionsContainer.style.display = 'flex';
+  optionsContainer.style.alignItems = 'center';
+  optionsContainer.style.justifyContent = 'space-between';
+
+  const clearOnRenderLabel = document.createElement('label');
+  const clearOnRenderCheckbox = document.createElement('input');
+  clearOnRenderCheckbox.type = 'checkbox';
+
+  clearOnRenderLabel.innerText = 'Clear On Render';
+  clearOnRenderLabel.style.marginLeft = '4px';
+  clearOnRenderLabel.htmlFor = 'cor';
+  clearOnRenderCheckbox.id = 'cor';
+  clearOnRenderCheckbox.checked = true;
+
+  const rotCountLabel = document.createElement('label');
+
+  rotCountLabel.innerText = 'Alphabet Rotations';
+  rotCountLabel.htmlFor = 'rc';
+  rotCountLabel.style.marginLeft = '24px';
+  rotCountLabel.style.marginRight = '4px';
+
+  const rotCountNum = document.createElement('input');
+  rotCountNum.style.width = '64px';
+  rotCountNum.style.height = '48px';
+  rotCountNum.style.fontSize = '24px';
+  rotCountNum.id = 'rc';
+  rotCountNum.type = 'number';
+  rotCountNum.value = 0;
+  rotCountNum.min = 0;
+  rotCountNum.max = 9;
+
+  const rotCountContainer = document.createElement('div');
+
+  const clearOnRenderContainer = document.createElement('div');
+  clearOnRenderContainer.appendChild(clearOnRenderCheckbox);
+  clearOnRenderContainer.appendChild(clearOnRenderLabel);
+
+  const midContainer = document.createElement('div');
+  midContainer.style.display = 'flex';
+  // midContainer.style.justifyContent = 'space-between';
+
+  const historyContainer = document.createElement('div');
+  historyContainer.style.marginLeft = '24px';
+  historyContainer.style.flex = 1;
+
+  midContainer.appendChild(canvas);
+  midContainer.appendChild(historyContainer);
+
+  document.body.appendChild(phraseContainer);
+  document.body.appendChild(midContainer);
+  document.body.appendChild(optionsContainer);
+
+  optionsContainer.appendChild(clearOnRenderContainer);
+
+  rotCountContainer.appendChild(rotCountLabel);
+  rotCountContainer.appendChild(rotCountNum);
+  optionsContainer.appendChild(rotCountContainer);
+
+  const historyState = [];
+
+  let isHistorialPlayback = false;
+
+  const makeHistoryItem = (state) => {
+    const itemContainer = document.createElement('div');
+    itemContainer.style.cursor = 'pointer';
+    itemContainer.addEventListener(
+      'mouseover',
+      () => {
+        itemContainer.style.backgroundColor = 'rgba(255,255,0,0.4)';
+      },
+      false
+    );
+    itemContainer.addEventListener(
+      'mouseout',
+      () => {
+        itemContainer.style.backgroundColor = 'transparent';
+      },
+      false
+    );
+    itemContainer.addEventListener(
+      'click',
+      () => {
+        phraseTxt.value = state.text;
+        rotCountNum.value = state.rotations;
+        isHistorialPlayback = true;
+        handleRender();
+        isHistorialPlayback = false;
+      },
+      false
+    );
+    itemContainer.style.flex = 1;
+    const itemText = document.createElement('div');
+    itemText.innerText = `phrase: "${state.text}"`;
+    const itemRot = document.createElement('div');
+    itemRot.innerText = `ar: ${state.rotations}`;
+    itemContainer.appendChild(itemText);
+    itemContainer.appendChild(itemRot);
+    return itemContainer;
+  };
+
+  const refreshHistory = () => {
+    while (historyContainer.firstChild) {
+      historyContainer.removeChild(historyContainer.firstChild);
+    }
+    for (const state of historyState) {
+      const itemContainer = makeHistoryItem(state);
+      historyContainer.appendChild(itemContainer);
+    }
+  };
+
+  const loadHistoryFromLS = () => {
+    try {
+      const lsContent = window.localStorage.getItem('runebuilderhistory');
+      if (lsContent) {
+        const lsHistory = JSON.parse(lsContent);
+        if (Array.isArray(lsHistory)) {
+          historyState.length = 0;
+          for (const state of lsHistory) {
+            historyState.push({ ...state });
+          }
+          refreshHistory();
+        }
+      }
+    } catch (err) {
+      return historyState;
+    }
+  };
+
+  const saveHistoryToLS = () => {
+    try {
+      const lsContent = JSON.stringify(historyState);
+      window.localStorage.setItem('runebuilderhistory', lsContent);
+      return true;
+    } catch (err) {
+      return null;
+    }
+  };
+
+  const addToHistory = (state) => {
+    historyState.push({ ...state });
+    saveHistoryToLS();
+    const itemContainer = makeHistoryItem(state);
+    historyContainer.appendChild(itemContainer);
+  };
 
   const handleRender = () => {
     if (phraseTxt.value.length < 2) {
@@ -27,35 +197,14 @@ function create() {
       ctx.fillStyle = '#fff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-    render(reduce(text), ctx);
+    const rotations = rotCountNum.valueAsNumber;
+    const state = { time: new Date().getTime(), text, rotations };
+
+    render(reduce(text, rotations), ctx);
+    if (!isHistorialPlayback) {
+      addToHistory(state);
+    }
   };
-
-  const phraseTxt = document.createElement('input');
-  phraseTxt.style.display = 'block';
-  phraseTxt.style.marginBottom = '24px';
-  phraseTxt.style.width = '512px';
-  phraseTxt.style.height = '48px';
-  phraseTxt.style.fontSize = '24px';
-  phraseTxt.placeholder = 'Enter Phrase';
-  document.body.appendChild(phraseTxt);
-
-  const renderBtn = document.createElement('button');
-  renderBtn.style.width = '200px';
-  renderBtn.style.height = '48px';
-  renderBtn.innerText = 'Render';
-  document.body.appendChild(renderBtn);
-
-  const clearOnRenderLabel = document.createElement('label');
-  const clearOnRenderCheckbox = document.createElement('input');
-  clearOnRenderCheckbox.type = 'checkbox';
-
-  clearOnRenderLabel.innerText = 'Clear On Render';
-  clearOnRenderLabel.htmlFor = 'cor';
-  clearOnRenderCheckbox.id = 'cor';
-  clearOnRenderCheckbox.checked = true;
-
-  document.body.appendChild(clearOnRenderCheckbox);
-  document.body.appendChild(clearOnRenderLabel);
 
   phraseTxt.addEventListener(
     'keydown',
@@ -74,6 +223,8 @@ function create() {
     },
     false
   );
+
+  loadHistoryFromLS();
 }
 
 function render(indices, ctx) {
@@ -102,7 +253,7 @@ function render(indices, ctx) {
   ctx.stroke();
 }
 
-function reduce(input) {
+function reduce(input, alphabetRotations) {
   // input: "some text"
   // output: [p0, p1, pN]
 
@@ -125,7 +276,9 @@ function reduce(input) {
 
   const input2 = output.filter(Boolean).join('');
 
-  const m = 'abcdefghijklmnopqrstuvwxyz'.split('');
+  const alphabet = rotated('abcdefghijklmnopqrstuvwxyz', alphabetRotations);
+
+  const m = alphabet.split('');
   output = [];
   letters = input2.split('');
   for (let i = 0; i < letters.length; i++) {
@@ -154,6 +307,14 @@ function reduce(input) {
   return output;
 
   // return [2, 6, 1, 7, 8, 4, 8, 0, 3, 2, 0, 5];
+}
+
+function rotated(input, count) {
+  const output = input.split('');
+  for (let i = 0; i < count; i++) {
+    output.push(output.shift());
+  }
+  return output.join('');
 }
 
 create();
